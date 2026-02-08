@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '../supabaseClient';
 
 export default function FilmEntryForm() {
   const [formData, setFormData] = useState({
@@ -8,16 +9,47 @@ export default function FilmEntryForm() {
     cost: '',
     notes: ''
   });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form Submitted:', formData);
-    alert('저장되었습니다! (아직 서버는 없어요)');
+    setLoading(true);
+
+    // 1. Supabase에 데이터 저장
+    const { data, error } = await supabase
+      .from('film_logs')
+      .insert([
+        { 
+          date: formData.date, 
+          type: formData.type, 
+          film_name: formData.filmName, 
+          cost: parseInt(formData.cost, 10), 
+          notes: formData.notes 
+        },
+      ]);
+
+    setLoading(false);
+
+    if (error) {
+      console.error('Error inserting data:', error);
+      alert('저장 실패! 😭: ' + error.message);
+    } else {
+      console.log('Success:', data);
+      alert('저장되었습니다! 🎉');
+      // 2. 폼 초기화
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        type: 'purchase',
+        filmName: '',
+        cost: '',
+        notes: ''
+      });
+    }
   };
 
   return (
@@ -95,9 +127,12 @@ export default function FilmEntryForm() {
 
         <button
           type="submit"
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          disabled={loading}
+          className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
+            ${loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}
+            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition`}
         >
-          기록 저장
+          {loading ? '저장 중...' : '기록 저장'}
         </button>
       </form>
     </div>
