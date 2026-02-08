@@ -39,7 +39,7 @@ export default function Inventory() {
         .insert([{
           name: newStock.name,
           expiry_date: newStock.expiry_date || null,
-          cost_per_roll: parseInt(newStock.cost_per_roll, 10) || 0,
+          cost: parseInt(newStock.cost_per_roll, 10) || 0,
           quantity: parseInt(newStock.quantity, 10) || 1
         }])
         .select();
