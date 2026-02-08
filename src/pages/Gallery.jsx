@@ -17,11 +17,11 @@ export default function Gallery() {
   const [uploadProgress, setUploadProgress] = useState('');
   const fileInputRef = useRef(null);
 
-  // 1. 목록 로드
-  useEffect(() => {
-    fetchRolls();
-  }, []);
+  // 크게 보기 (선택된 사진)
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
 
+  // 1. 목록 로드
+  useEffect(() => { fetchRolls(); }, []);
   const fetchRolls = async () => {
     setLoading(true);
     try {
@@ -61,7 +61,6 @@ export default function Gallery() {
     const files = Array.from(e.target.files);
     if (files.length === 0 || !currentRoll) return;
 
-    // 최대 42장 제한
     if (files.length > 42) {
       alert('한 번에 최대 42장까지만 선택해주세요! 🎞️');
       return;
@@ -73,35 +72,29 @@ export default function Gallery() {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      setUploadProgress(`${i + 1}/${files.length}`); // 진행 상황 표시
+      setUploadProgress(`${i + 1}/${files.length}`);
 
       try {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
         
-        // (1) 업로드
         const { error: uploadError } = await supabase.storage.from('scans').upload(fileName, file);
         if (uploadError) throw uploadError;
 
-        // (2) URL
         const { data: { publicUrl } } = supabase.storage.from('scans').getPublicUrl(fileName);
 
-        // (3) DB 저장
         const { data, error: dbError } = await supabase.from('photos').insert([{ roll_id: currentRoll.id, image_url: publicUrl }]).select();
         if (dbError) throw dbError;
 
         newPhotos.push(data[0]);
         successCount++;
-      } catch (error) {
-        console.error('Upload failed for file:', file.name, error);
-      }
+      } catch (error) { console.error('Upload failed:', error); }
     }
 
     setPhotos(prev => [...prev, ...newPhotos]);
     setUploading(false);
     setUploadProgress('');
     alert(`${successCount}장의 사진이 추가되었습니다! 📸`);
-    
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
   
@@ -173,15 +166,10 @@ export default function Gallery() {
              {photos.map((photo) => (
                <div 
                  key={photo.id} 
-                 className="aspect-[3/2] bg-black relative group overflow-hidden cursor-pointer"
-                 onClick={() => window.open(photo.image_url, '_blank')}
+                 className="aspect-[3/2] bg-gray-900 relative group overflow-hidden cursor-pointer hover:opacity-80 transition"
+                 onClick={() => setSelectedPhoto(photo)} // 클릭 시 확대!
                >
-                 <img 
-                   src={photo.image_url} 
-                   alt="scan" 
-                   className="w-full h-full object-contain"
-                   loading="lazy"
-                 />
+                 <img src={photo.image_url} alt="scan" className="w-full h-full object-contain bg-black" loading="lazy" />
                </div>
              ))}
              {photos.length === 0 && !loading && <div className="col-span-4 text-center py-20 text-gray-600 text-xs"><p>비어있음</p></div>}
@@ -189,7 +177,7 @@ export default function Gallery() {
         </div>
       )}
 
-      {/* 3. 모달 (생략 - 위와 동일) */}
+      {/* 3. 새 필름통 모달 */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl animate-scale-in">
@@ -209,6 +197,28 @@ export default function Gallery() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* 4. 크게 보기 (LightBox) */}
+      {selectedPhoto && (
+        <div 
+          className="fixed inset-0 bg-black z-[100] flex items-center justify-center animate-fade-in"
+          onClick={() => setSelectedPhoto(null)} // 배경 누르면 닫기
+        >
+          <button 
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-2 bg-black/50 rounded-full"
+            onClick={() => setSelectedPhoto(null)}
+          >
+            <X size={24} />
+          </button>
+          
+          <img 
+            src={selectedPhoto.image_url} 
+            alt="Full view" 
+            className="max-w-full max-h-full object-contain p-2"
+            onClick={(e) => e.stopPropagation()} // 이미지 눌렀을 땐 안 닫히게 (확대 기능 나중에 추가?)
+          />
         </div>
       )}
     </div>
