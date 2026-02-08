@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import Layout from './components/Layout';
-import FilmLog from './pages/FilmLog';
+import Inventory from './pages/Inventory';
 import Gallery from './pages/Gallery';
 import Login from './pages/Login';
+import GearSettings from './pages/GearSettings';
+import ScanPage from './pages/ScanPage'; // 새로 추가
 import { Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -12,13 +14,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. 현재 세션 확인 (이미 로그인 되어있는지?)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-    // 2. 로그인 상태 변경 감지 (로그아웃 등)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -37,7 +37,6 @@ export default function App() {
     );
   }
 
-  // 로그인 안 했으면 -> 로그인 화면만 보여줌 (나머지 접근 불가!)
   if (!session) {
     return (
       <BrowserRouter>
@@ -48,24 +47,21 @@ export default function App() {
     );
   }
 
-  // 로그인 했으면 -> 앱 화면 진입!
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<FilmLog />} />
+          {/* 메인 화면 -> 필름 창고 (Inventory) */}
+          <Route index element={<Inventory />} />
+          
+          {/* 밀착인화 탭 */}
           <Route path="gallery" element={<Gallery />} />
-          <Route path="settings" element={
-            <div className="p-4 text-center">
-              <h2 className="text-xl font-bold mb-4">설정</h2>
-              <button 
-                onClick={() => supabase.auth.signOut()} 
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm shadow-md transition"
-              >
-                로그아웃
-              </button>
-            </div>
-          } />
+          
+          {/* 설정 탭 -> 장비 관리 */}
+          <Route path="settings" element={<GearSettings />} />
+          
+          {/* 스캔 페이지 (Tab Bar 없이 전체 화면) */}
+          <Route path="scan" element={<ScanPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
