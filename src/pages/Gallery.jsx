@@ -169,13 +169,22 @@ export default function Gallery() {
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" multiple className="hidden" />
           </div>
 
-          <div className="p-1 grid grid-cols-3 gap-1 auto-rows-fr">
+          <div className="p-1 grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-0.5 auto-rows-[minmax(0,_1fr)]">
              {photos.map((photo) => (
-               <div key={photo.id} className="aspect-square bg-gray-900 relative group overflow-hidden">
-                 <img src={photo.image_url} alt="scan" className="w-full h-full object-cover" loading="lazy" />
+               <div 
+                 key={photo.id} 
+                 className="aspect-[3/2] bg-black relative group overflow-hidden cursor-pointer"
+                 onClick={() => window.open(photo.image_url, '_blank')}
+               >
+                 <img 
+                   src={photo.image_url} 
+                   alt="scan" 
+                   className="w-full h-full object-contain"
+                   loading="lazy"
+                 />
                </div>
              ))}
-             {photos.length === 0 && !loading && <div className="col-span-3 text-center py-20 text-gray-600 text-xs"><p>비어있음</p></div>}
+             {photos.length === 0 && !loading && <div className="col-span-4 text-center py-20 text-gray-600 text-xs"><p>비어있음</p></div>}
           </div>
         </div>
       )}
