@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Loader2, Plus, Box, ScanLine } from 'lucide-react';
+import { Loader2, Plus, Box, ScanLine, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Inventory() {
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(false);
-  
-  // 모달 상태
   const [showAddModal, setShowAddModal] = useState(false);
   const [newStock, setNewStock] = useState({
     name: '',
@@ -18,7 +16,6 @@ export default function Inventory() {
 
   const navigate = useNavigate();
 
-  // 1. 재고 목록 가져오기
   useEffect(() => {
     fetchStocks();
   }, []);
@@ -32,7 +29,6 @@ export default function Inventory() {
     } catch (error) { console.error(error); } finally { setLoading(false); }
   };
 
-  // 2. 재고 추가
   const handleAddStock = async (e) => {
     e.preventDefault();
     if (!newStock.name.trim()) return;
@@ -53,33 +49,17 @@ export default function Inventory() {
       setStocks([data[0], ...stocks]);
       setShowAddModal(false);
       setNewStock({ name: '', expiry_date: '', cost_per_roll: '', quantity: 1 });
-      alert('필름이 창고에 입고되었습니다! 📦');
+      alert('입고 완료! 📦');
     } catch (error) {
       alert('입고 실패: ' + error.message);
     }
   };
 
-  // 3. 재고 차감 (수량 감소)
-  const decreaseStock = async (stockId, currentQty) => {
-    if (currentQty <= 0) return;
-    try {
-      const { error } = await supabase
-        .from('film_stocks')
-        .update({ quantity: currentQty - 1 })
-        .eq('id', stockId);
-      
-      if (error) throw error;
-      setStocks(stocks.map(s => s.id === stockId ? { ...s, quantity: s.quantity - 1 } : s));
-    } catch (error) { console.error(error); }
-  };
-
-  // 4. 사용/스캔 화면으로 이동
   const handleUse = (stock) => {
     if (stock.quantity <= 0) {
       alert('재고가 없습니다! 😭');
       return;
     }
-    // 스캔 화면으로 이동하면서 선택된 필름 정보 넘김
     navigate('/scan', { state: { stock } });
   };
 
@@ -114,7 +94,6 @@ export default function Inventory() {
                 </div>
               </div>
 
-              {/* 액션 버튼 */}
               <div className="flex gap-2 mt-2">
                 <button 
                   onClick={() => handleUse(stock)}
@@ -138,10 +117,10 @@ export default function Inventory() {
         <Plus size={28} />
       </button>
 
-      {/* 입고 모달 */}
+      {/* 모달 (애니메이션 제거) */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl animate-scale-in relative">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative">
             <button onClick={() => setShowAddModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={20} /></button>
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Box size={20} /> 새 필름 입고</h3>
             
