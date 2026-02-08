@@ -10,7 +10,7 @@ export default function Inventory() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // 모달 상태 (필름 입고 / 장비 추가)
+  // 모달 상태
   const [showAddStockModal, setShowAddStockModal] = useState(false);
   const [showAddGearModal, setShowAddGearModal] = useState(false);
   
@@ -22,37 +22,27 @@ export default function Inventory() {
   const [isCustomAdd, setIsCustomAdd] = useState(false);
   const [customFilm, setCustomFilm] = useState({ name: '', brand: '', iso: '' });
 
-  // 장비 추가 상태
-  const [newGear, setNewGear] = useState({ type: 'camera', brand: '', model: '' });
+  // 장비 추가 상태 (렌즈 스펙 추가!)
+  const [newGear, setNewGear] = useState({ 
+    type: 'camera', 
+    brand: '', 
+    model: '',
+    focal_length: '', // New
+    aperture: ''      // New
+  });
 
-  // 1. 데이터 로드 (필름 + 장비)
-  useEffect(() => {
-    fetchData();
-  }, []);
-
+  // ... (데이터 로드 등 기존 코드 생략 - 변경 없음) ...
+  useEffect(() => { fetchData(); }, []);
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 필름
-      const { data: stockData } = await supabase
-        .from('film_stocks')
-        .select(`*, film_products (id, name, brand, iso)`)
-        .order('expiry_date', { ascending: true });
-      
+      const { data: stockData } = await supabase.from('film_stocks').select(`*, film_products (*)`).order('expiry_date', { ascending: true });
       setStocks(stockData || []);
       groupStocks(stockData || []);
-
-      // 장비
-      const { data: gearData } = await supabase
-        .from('gears')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
+      const { data: gearData } = await supabase.from('gears').select('*').order('created_at', { ascending: false });
       setGears(gearData || []);
-
     } catch (error) { console.error(error); } finally { setLoading(false); }
   };
-
   const groupStocks = (data) => {
     const groups = data.reduce((acc, stock) => {
       const pid = stock.product_id;
@@ -64,7 +54,7 @@ export default function Inventory() {
     setGroupedStocks(groups);
   };
 
-  // --- 필름 입고 로직 (생략 - 기존과 동일) ---
+  // ... (필름 입고 로직 생략 - 변경 없음) ...
   useEffect(() => {
     if (!searchTerm.trim()) { setSearchResults([]); return; }
     const timer = setTimeout(async () => {
@@ -73,7 +63,6 @@ export default function Inventory() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
-
   const handleAddStock = async (e) => {
     e.preventDefault();
     try {
@@ -83,14 +72,7 @@ export default function Inventory() {
         productId = data.id;
       }
       if (!productId) return alert('필름 선택 필수!');
-
-      const { data } = await supabase.from('film_stocks').insert([{
-        product_id: productId,
-        expiry_date: newStock.expiry_date || null,
-        cost: parseInt(newStock.cost) || 0,
-        quantity: parseInt(newStock.quantity) || 1
-      }]).select(`*, film_products(*)`).single();
-
+      const { data } = await supabase.from('film_stocks').insert([{ product_id: productId, expiry_date: newStock.expiry_date || null, cost: parseInt(newStock.cost) || 0, quantity: parseInt(newStock.quantity) || 1 }]).select(`*, film_products(*)`).single();
       const newStocks = [...stocks, data];
       setStocks(newStocks);
       groupStocks(newStocks);
@@ -99,15 +81,40 @@ export default function Inventory() {
     } catch (error) { alert(error.message); }
   };
 
-  // --- 장비 추가 로직 ---
+  // --- 장비 추가 로직 (수정됨!) ---
   const handleAddGear = async (e) => {
     e.preventDefault();
     try {
-      const { data, error } = await supabase.from('gears').insert([newGear]).select();
+      // 렌즈일 경우 모델명 자동 생성 (예: "50mm f1.4")
+      let finalModel = newGear.model;
+      let finalFocal = null;
+      let finalAperture = null;
+
+      if (newGear.type === 'lens') {
+        if (!newGear.focal_length || !newGear.aperture) return alert('화각과 조리개를 입력해주세요!');
+        finalModel = `${newGear.focal_length}mm f${newGear.aperture}`; // 모델명 자동 조합
+        finalFocal = parseInt(newGear.focal_length);
+        finalAperture = parseFloat(newGear.aperture);
+      } else {
+        if (!newGear.model) return alert('모델명을 입력해주세요!');
+      }
+
+      const { data, error } = await supabase
+        .from('gears')
+        .insert([{ 
+          type: newGear.type, 
+          brand: newGear.brand, 
+          model: finalModel,
+          focal_length: finalFocal,
+          aperture: finalAperture
+        }])
+        .select();
+
       if (error) throw error;
+
       setGears([data[0], ...gears]);
       setShowAddGearModal(false);
-      setNewGear({ type: 'camera', brand: '', model: '' });
+      setNewGear({ type: 'camera', brand: '', model: '', focal_length: '', aperture: '' });
       alert('장비 추가 완료! 📷');
     } catch (error) { alert('실패: ' + error.message); }
   };
@@ -123,50 +130,32 @@ export default function Inventory() {
     navigate('/scan', { state: { stock: { ...stock, name: stock.film_products.name } } });
   };
 
-  // --- 렌더링 ---
   return (
     <div className="p-4 pb-24 min-h-screen bg-gray-50 relative">
-      
-      {/* 1. 필름 창고 섹션 */}
+      {/* 1. 필름 창고 (기존 동일) */}
       <section className="mb-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Box className="text-gray-700" /> 내 필름 창고
-          </h2>
-          <button onClick={() => setShowAddStockModal(true)} className="text-indigo-600 text-sm font-bold bg-indigo-50 px-3 py-1 rounded-full hover:bg-indigo-100">
-            + 필름 입고
-          </button>
+          <h2 className="text-xl font-bold flex items-center gap-2"><Box className="text-gray-700" /> 내 필름 창고</h2>
+          <button onClick={() => setShowAddStockModal(true)} className="text-indigo-600 text-sm font-bold bg-indigo-50 px-3 py-1 rounded-full hover:bg-indigo-100">+ 필름 입고</button>
         </div>
-
         <div className="space-y-4">
           {Object.values(groupedStocks).map(group => <StockGroupCard key={group.product.id} group={group} onUse={handleUse} />)}
           {stocks.length === 0 && !loading && <div className="text-center py-8 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300"><p>창고가 비었습니다.</p></div>}
         </div>
       </section>
 
-      {/* 2. 장비 선반 섹션 */}
+      {/* 2. 장비 선반 (기존 동일) */}
       <section>
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Camera className="text-gray-700" /> 내 장비 선반
-          </h2>
-          <button onClick={() => setShowAddGearModal(true)} className="text-green-600 text-sm font-bold bg-green-50 px-3 py-1 rounded-full hover:bg-green-100">
-            + 장비 추가
-          </button>
+          <h2 className="text-xl font-bold flex items-center gap-2"><Camera className="text-gray-700" /> 내 장비 선반</h2>
+          <button onClick={() => setShowAddGearModal(true)} className="text-green-600 text-sm font-bold bg-green-50 px-3 py-1 rounded-full hover:bg-green-100">+ 장비 추가</button>
         </div>
-
-        {gears.length === 0 ? (
-          <div className="text-center py-8 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">
-            <p>장비 선반이 비었습니다.</p>
-          </div>
-        ) : (
+        {gears.length === 0 ? <div className="text-center py-8 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300"><p>장비 선반이 비었습니다.</p></div> : 
           <div className="grid grid-cols-2 gap-3">
             {gears.map(gear => (
               <div key={gear.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center relative group">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${gear.type === 'camera' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
-                    {gear.type === 'camera' ? <Camera size={18} /> : <Aperture size={18} />}
-                  </div>
+                  <div className={`p-2 rounded-lg ${gear.type === 'camera' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>{gear.type === 'camera' ? <Camera size={18} /> : <Aperture size={18} />}</div>
                   <div>
                     <p className="font-bold text-gray-800 text-sm">{gear.model}</p>
                     <p className="text-xs text-gray-400">{gear.brand}</p>
@@ -176,27 +165,22 @@ export default function Inventory() {
               </div>
             ))}
           </div>
-        )}
+        }
       </section>
 
-      {/* 모달 1: 필름 입고 (기존 코드 재사용) */}
+      {/* 모달 1: 필름 입고 (기존 동일) */}
       {showAddStockModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
             <button onClick={() => setShowAddStockModal(false)} className="absolute top-4 right-4 text-gray-400"><X size={20} /></button>
             <h3 className="text-lg font-bold mb-4">필름 입고</h3>
             <form onSubmit={handleAddStock}>
-              {/* (필름 검색 UI 생략 - 위와 동일) */}
               {!selectedProduct && !isCustomAdd ? (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-600 mb-2">필름 검색</label>
                   <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="예: Gold, Portra..." className="w-full border border-gray-300 rounded-xl p-3 outline-none" autoFocus />
                   <div className="mt-2 space-y-1">
-                    {searchResults.map(prod => (
-                      <div key={prod.id} onClick={() => setSelectedProduct(prod)} className="p-3 bg-gray-50 rounded-lg cursor-pointer flex justify-between">
-                        <span className="font-bold">{prod.name}</span><span className="text-xs bg-gray-200 px-2 py-1 rounded">{prod.brand}</span>
-                      </div>
-                    ))}
+                    {searchResults.map(prod => ( <div key={prod.id} onClick={() => setSelectedProduct(prod)} className="p-3 bg-gray-50 rounded-lg cursor-pointer flex justify-between"><span className="font-bold">{prod.name}</span><span className="text-xs bg-gray-200 px-2 py-1 rounded">{prod.brand}</span></div> ))}
                     {searchTerm && <div onClick={() => setIsCustomAdd(true)} className="p-3 text-indigo-600 font-bold cursor-pointer text-center">+ 직접 추가</div>}
                   </div>
                 </div>
@@ -217,7 +201,7 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* 모달 2: 장비 추가 */}
+      {/* 모달 2: 장비 추가 (수정됨!) */}
       {showAddGearModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative">
@@ -228,8 +212,28 @@ export default function Inventory() {
                 <button type="button" onClick={() => setNewGear({...newGear, type: 'camera'})} className={`flex-1 py-2 rounded-lg font-bold ${newGear.type === 'camera' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}`}>카메라</button>
                 <button type="button" onClick={() => setNewGear({...newGear, type: 'lens'})} className={`flex-1 py-2 rounded-lg font-bold ${newGear.type === 'lens' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}`}>렌즈</button>
               </div>
+              
               <input type="text" placeholder="브랜드 (예: Nikon)" value={newGear.brand} onChange={e => setNewGear({...newGear, brand: e.target.value})} className="w-full p-3 border rounded-xl" />
-              <input type="text" placeholder="모델명 (예: F3)" value={newGear.model} onChange={e => setNewGear({...newGear, model: e.target.value})} className="w-full p-3 border rounded-xl" required autoFocus />
+              
+              {/* 카메라일 때: 모델명 입력 */}
+              {newGear.type === 'camera' && (
+                <input type="text" placeholder="모델명 (예: F3)" value={newGear.model} onChange={e => setNewGear({...newGear, model: e.target.value})} className="w-full p-3 border rounded-xl" required />
+              )}
+
+              {/* 렌즈일 때: 화각/조리개 입력 */}
+              {newGear.type === 'lens' && (
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <input type="number" placeholder="화각 (50)" value={newGear.focal_length} onChange={e => setNewGear({...newGear, focal_length: e.target.value})} className="w-full p-3 border rounded-xl" required />
+                    <span className="absolute right-3 top-3 text-gray-400 text-sm">mm</span>
+                  </div>
+                  <div className="flex-1 relative">
+                    <input type="number" placeholder="조리개 (1.4)" value={newGear.aperture} onChange={e => setNewGear({...newGear, aperture: e.target.value})} className="w-full p-3 border rounded-xl" required step="0.1" />
+                    <span className="absolute right-3 top-3 text-gray-400 text-sm">f/</span>
+                  </div>
+                </div>
+              )}
+
               <button type="submit" className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-black">추가하기</button>
             </form>
           </div>
