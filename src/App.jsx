@@ -1,22 +1,24 @@
-import React from 'react'
-import FilmEntryForm from './components/FilmEntryForm'
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
+import FilmLog from './pages/FilmLog';
+import Gallery from './pages/Gallery';
 
-function App() {
+export default function App() {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <header className="mb-6 text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            FilmStory
-          </h1>
-          <p className="text-gray-500">당신의 필름 라이프를 기록하세요</p>
-        </header>
-        <main>
-          <FilmEntryForm />
-        </main>
-      </div>
-    </div>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          {/* 기록 (가계부) */}
+          <Route index element={<FilmLog />} />
+          
+          {/* 밀착인화 갤러리 */}
+          <Route path="gallery" element={<Gallery />} />
+          
+          {/* 설정 (임시) */}
+          <Route path="settings" element={<div className="p-4 text-center">설정 페이지는 공사 중 🚧</div>} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
 }
-
-export default App
