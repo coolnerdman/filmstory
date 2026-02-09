@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Loader2, Plus, Box, ScanLine, X, Search, ChevronDown, ChevronUp, Camera, Aperture, Trash2, RefreshCw } from 'lucide-react';
+import { Loader2, Plus, Box, ScanLine, X, Search, ChevronDown, ChevronUp, Camera, Aperture, Trash2, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Inventory() {
@@ -8,12 +8,12 @@ export default function Inventory() {
   const [groupedStocks, setGroupedStocks] = useState({});
   const [gears, setGears] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(''); // 에러 메시지
+  const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
 
   // 모달 상태
   const [showAddStockModal, setShowAddStockModal] = useState(false);
-  const [showAddGearModal, setShowAddGearModal] = useState(false);
+  const [showManageGearModal, setShowManageGearModal] = useState(false); // 장비 관리 모달
   
   // 검색 & 필름 입고 상태
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,7 +72,7 @@ export default function Inventory() {
     setGroupedStocks(groups);
   };
 
-  // --- (이하 로직 기존과 동일, UI만 그대로 유지) ---
+  // --- 필름 입고 로직 ---
   useEffect(() => {
     if (!searchTerm.trim()) { setSearchResults([]); return; }
     const timer = setTimeout(async () => {
@@ -100,6 +100,7 @@ export default function Inventory() {
     } catch (error) { alert(error.message); }
   };
 
+  // --- 장비 추가 로직 ---
   const handleAddGear = async (e) => {
     e.preventDefault();
     try {
@@ -121,10 +122,9 @@ export default function Inventory() {
       }]).select();
 
       if (error) throw error;
-      setGears([data[0], ...gears]);
-      setShowAddGearModal(false);
-      setNewGear({ type: 'camera', brand: '', model: '', focal_length: '', aperture: '' });
-      alert('추가 완료!');
+      setGears([data[0], ...gears]); // 목록 갱신
+      setNewGear({ type: 'camera', brand: '', model: '', focal_length: '', aperture: '' }); // 폼 초기화
+      // 모달은 닫지 않음 (연속 추가 가능하게)
     } catch (error) { alert('실패: ' + error.message); }
   };
 
@@ -142,7 +142,6 @@ export default function Inventory() {
   return (
     <div className="p-4 pb-24 min-h-screen bg-gray-50 relative">
       
-      {/* 에러 메시지 */}
       {errorMsg && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
           <strong className="font-bold">Error: </strong> {errorMsg}
@@ -153,7 +152,7 @@ export default function Inventory() {
       <section className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold flex items-center gap-2"><Box className="text-gray-700" /> 내 필름 창고</h2>
-          <button onClick={() => setShowAddStockModal(true)} className="text-indigo-600 text-sm font-bold bg-indigo-50 px-3 py-1 rounded-full hover:bg-indigo-100">+ 필름 입고</button>
+          <button onClick={() => setShowAddStockModal(true)} className="text-indigo-600 text-xs font-bold bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100">+ 필름 입고</button>
         </div>
         <div className="space-y-4">
           {Object.values(groupedStocks).map(group => <StockGroupCard key={group.product.id} group={group} onUse={handleUse} />)}
@@ -161,45 +160,45 @@ export default function Inventory() {
         </div>
       </section>
 
-      {/* 2. 장비 선반 */}
+      {/* 2. 장비 선반 (메인 화면용 - 보기 전용) */}
       <section>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold flex items-center gap-2"><Camera className="text-gray-700" /> 내 장비 선반</h2>
-          <div className="flex gap-2">
-            <button onClick={fetchData} className="p-1 rounded-full text-gray-400 hover:bg-gray-200"><RefreshCw size={16} /></button>
-            <button onClick={() => setShowAddGearModal(true)} className="text-green-600 text-sm font-bold bg-green-50 px-3 py-1 rounded-full hover:bg-green-100">+ 장비 추가</button>
-          </div>
+          {/* 장비 관리 버튼 (추가/삭제 모달 열기) */}
+          <button onClick={() => setShowManageGearModal(true)} className="text-gray-600 text-xs font-bold bg-gray-100 px-3 py-1.5 rounded-full hover:bg-gray-200 flex items-center gap-1">
+            <Settings size={14} /> 장비 관리
+          </button>
         </div>
+        
         {gears.length === 0 && !loading ? (
           <div className="text-center py-8 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">
             <p>장비 선반이 비었습니다.</p>
-            <p className="text-xs mt-1">(DB: {gears.length}개 로드됨)</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {gears.map(gear => (
-              <div key={gear.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center relative group">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${gear.type === 'camera' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>{gear.type === 'camera' ? <Camera size={18} /> : <Aperture size={18} />}</div>
-                  <div>
-                    <p className="font-bold text-gray-800 text-sm">{gear.model}</p>
-                    <p className="text-xs text-gray-400">{gear.brand}</p>
-                  </div>
+              <div key={gear.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${gear.type === 'camera' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+                  {gear.type === 'camera' ? <Camera size={18} /> : <Aperture size={18} />}
                 </div>
-                <button onClick={() => deleteGear(gear.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><Trash2 size={16} /></button>
+                <div>
+                  <p className="font-bold text-gray-800 text-sm truncate">{gear.model}</p>
+                  <p className="text-xs text-gray-400 truncate">{gear.brand}</p>
+                </div>
               </div>
             ))}
           </div>
         )}
       </section>
 
-      {/* 모달 1 (생략 - 위와 동일) */}
+      {/* 모달 1: 필름 입고 (기존 동일) */}
       {showAddStockModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
             <button onClick={() => setShowAddStockModal(false)} className="absolute top-4 right-4 text-gray-400"><X size={20} /></button>
             <h3 className="text-lg font-bold mb-4">필름 입고</h3>
             <form onSubmit={handleAddStock}>
+              {/* (필름 검색 폼 - 위와 동일) */}
               {!selectedProduct && !isCustomAdd ? (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-600 mb-2">필름 검색</label>
@@ -226,22 +225,47 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* 모달 2 (수정됨) */}
-      {showAddGearModal && (
+      {/* 모달 2: 장비 관리 (추가 + 목록/삭제 통합) */}
+      {showManageGearModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative">
-            <button onClick={() => setShowAddGearModal(false)} className="absolute top-4 right-4 text-gray-400"><X size={20} /></button>
-            <h3 className="text-lg font-bold mb-4">새 장비 추가</h3>
-            <form onSubmit={handleAddGear} className="space-y-4">
+          <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setShowManageGearModal(false)} className="absolute top-4 right-4 text-gray-400"><X size={20} /></button>
+            <h3 className="text-lg font-bold mb-4">장비 관리</h3>
+            
+            {/* 1. 장비 추가 폼 */}
+            <form onSubmit={handleAddGear} className="space-y-4 mb-8 bg-gray-50 p-4 rounded-xl border border-gray-100">
+              <p className="text-xs font-bold text-gray-500 mb-2">새 장비 등록</p>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setNewGear({...newGear, type: 'camera'})} className={`flex-1 py-2 rounded-lg font-bold ${newGear.type === 'camera' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}`}>카메라</button>
-                <button type="button" onClick={() => setNewGear({...newGear, type: 'lens'})} className={`flex-1 py-2 rounded-lg font-bold ${newGear.type === 'lens' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}`}>렌즈</button>
+                <button type="button" onClick={() => setNewGear({...newGear, type: 'camera'})} className={`flex-1 py-1.5 rounded-lg text-sm font-bold ${newGear.type === 'camera' ? 'bg-gray-800 text-white' : 'bg-white border text-gray-500'}`}>카메라</button>
+                <button type="button" onClick={() => setNewGear({...newGear, type: 'lens'})} className={`flex-1 py-1.5 rounded-lg text-sm font-bold ${newGear.type === 'lens' ? 'bg-gray-800 text-white' : 'bg-white border text-gray-500'}`}>렌즈</button>
               </div>
-              <input type="text" placeholder="브랜드 (예: Nikon)" value={newGear.brand} onChange={e => setNewGear({...newGear, brand: e.target.value})} className="w-full p-3 border rounded-xl" />
-              {newGear.type === 'camera' && <input type="text" placeholder="모델명 (예: F3)" value={newGear.model} onChange={e => setNewGear({...newGear, model: e.target.value})} className="w-full p-3 border rounded-xl" required />}
-              {newGear.type === 'lens' && <div className="flex gap-2"><div className="flex-1 relative"><input type="number" placeholder="화각 (50)" value={newGear.focal_length} onChange={e => setNewGear({...newGear, focal_length: e.target.value})} className="w-full p-3 border rounded-xl" required /><span className="absolute right-3 top-3 text-gray-400 text-sm">mm</span></div><div className="flex-1 relative"><input type="number" placeholder="조리개 (1.4)" value={newGear.aperture} onChange={e => setNewGear({...newGear, aperture: e.target.value})} className="w-full p-3 border rounded-xl" required step="0.1" /><span className="absolute right-3 top-3 text-gray-400 text-sm">f/</span></div></div>}
-              <button type="submit" className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-black">추가하기</button>
+              <input type="text" placeholder="브랜드 (예: Nikon)" value={newGear.brand} onChange={e => setNewGear({...newGear, brand: e.target.value})} className="w-full p-2 border rounded-lg text-sm" />
+              {newGear.type === 'camera' && <input type="text" placeholder="모델명 (예: F3)" value={newGear.model} onChange={e => setNewGear({...newGear, model: e.target.value})} className="w-full p-2 border rounded-lg text-sm" required />}
+              {newGear.type === 'lens' && <div className="flex gap-2"><div className="flex-1 relative"><input type="number" placeholder="화각 (50)" value={newGear.focal_length} onChange={e => setNewGear({...newGear, focal_length: e.target.value})} className="w-full p-2 border rounded-lg text-sm" required /><span className="absolute right-3 top-2 text-gray-400 text-xs">mm</span></div><div className="flex-1 relative"><input type="number" placeholder="조리개 (1.4)" value={newGear.aperture} onChange={e => setNewGear({...newGear, aperture: e.target.value})} className="w-full p-2 border rounded-lg text-sm" required step="0.1" /><span className="absolute right-3 top-2 text-gray-400 text-xs">f/</span></div></div>}
+              <button type="submit" className="w-full bg-gray-900 text-white py-2 rounded-lg text-sm font-bold hover:bg-black">추가</button>
             </form>
+
+            {/* 2. 장비 목록 (삭제 기능 포함) */}
+            <div>
+              <p className="text-xs font-bold text-gray-500 mb-2">등록된 장비 ({gears.length})</p>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {gears.map(gear => (
+                  <div key={gear.id} className="bg-white p-3 rounded-lg border border-gray-200 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-1.5 rounded-lg ${gear.type === 'camera' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+                        {gear.type === 'camera' ? <Camera size={16} /> : <Aperture size={16} />}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-800 text-sm">{gear.model}</p>
+                        <p className="text-[10px] text-gray-400">{gear.brand}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => deleteGear(gear.id)} className="text-gray-300 hover:text-red-500 p-1"><Trash2 size={16} /></button>
+                  </div>
+                ))}
+                {gears.length === 0 && <p className="text-center text-xs text-gray-400 py-4">목록이 비었습니다.</p>}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -249,7 +273,7 @@ export default function Inventory() {
   );
 }
 
-// (StockGroupCard 생략 - 기존 동일)
+// (StockGroupCard는 기존과 동일)
 function StockGroupCard({ group, onUse }) {
   const [expanded, setExpanded] = useState(false);
   const { product, totalQty, items } = group;
