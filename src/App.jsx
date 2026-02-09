@@ -5,8 +5,8 @@ import Layout from './components/Layout';
 import Inventory from './pages/Inventory';
 import Gallery from './pages/Gallery';
 import Login from './pages/Login';
-import GearSettings from './pages/GearSettings';
-import ScanPage from './pages/ScanPage'; // 새로 추가
+import Settings from './pages/Settings'; // New!
+import ScanPage from './pages/ScanPage';
 import { Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -57,8 +57,8 @@ export default function App() {
           {/* 밀착인화 탭 */}
           <Route path="gallery" element={<Gallery />} />
           
-          {/* 설정 탭 -> 장비 관리 */}
-          <Route path="settings" element={<GearSettings />} />
+          {/* 설정 탭 (로그아웃 등) */}
+          <Route path="settings" element={<Settings />} />
           
           {/* 스캔 페이지 (Tab Bar 없이 전체 화면) */}
           <Route path="scan" element={<ScanPage />} />
